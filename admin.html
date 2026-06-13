@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>學校資料管理分析後台</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #d9e2ef;
+      --panel: #fff;
+      --soft: #f6f8fc;
+      --blue: #2563eb;
+      --green: #059669;
+      --amber: #d97706;
+      --red: #dc2626;
+      --shadow: 0 16px 42px rgba(23, 32, 51, .09);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+      color: var(--ink);
+      background: #eef3f8;
+      line-height: 1.5;
+    }
+
+    button, input, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 22px 18px;
+      background: #172033;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255,255,255,.14);
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      background: #facc15;
+      color: #172033;
+      font-weight: 900;
+    }
+
+    .brand strong, .brand span { display: block; }
+    .brand span { color: #b8c3d6; font-size: 12px; }
+
+    nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    nav a {
+      color: #dbe5f4;
+      text-decoration: none;
+      padding: 11px 12px;
+      border-radius: var(--radius);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    nav a:hover, nav a.active { background: rgba(255,255,255,.12); color: white; }
+
+    .side-note {
+      margin-top: auto;
+      color: #c9d4e7;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: var(--radius);
+      padding: 12px;
+      font-size: 12px;
+    }
+
+    main {
+      min-width: 0;
+      padding: 28px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 36px);
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      max-width: 780px;
+    }
+
+    .toolbar, .form-actions, .row-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      min-height: 40px;
+      padding: 9px 13px;
+      border-radius: var(--radius);
+      background: white;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .btn:hover { box-shadow: 0 8px 20px rgba(23, 32, 51, .08); }
+    .btn.primary { background: var(--blue); color: white; border-color: var(--blue); }
+    .btn.success { background: var(--green); color: white; border-color: var(--green); }
+    .btn.danger { background: var(--red); color: white; border-color: var(--red); }
+    .btn:disabled { opacity: .55; cursor: wait; }
+
+    .grid { display: grid; gap: 16px; }
+    .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; }
+    .workspace { grid-template-columns: minmax(320px, 430px) minmax(0, 1fr); align-items: start; }
+    .analytics { grid-template-columns: 1.1fr .9fr; margin-top: 16px; }
+
+    .card {
+      min-width: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-header h2 { margin: 0; font-size: 18px; }
+    .card-body { padding: 18px; }
+
+    .kpi {
+      padding: 18px;
+      min-height: 116px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi span, label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .kpi strong {
+      font-size: 32px;
+      line-height: 1;
+    }
+
+    .kpi small { color: var(--muted); font-weight: 800; }
+
+    .config {
+      grid-template-columns: minmax(260px, 1fr) minmax(220px, .8fr) minmax(160px, .6fr) auto;
+      align-items: end;
+      margin-bottom: 16px;
+      padding: 14px;
+      background: #fbfdff;
+    }
+
+    label { display: grid; gap: 6px; }
+
+    input, select {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--ink);
+      background: white;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .13);
+    }
+
+    .form-grid { display: grid; gap: 13px; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(130px, 180px));
+      gap: 10px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fafcff;
+    }
+
+    .table-wrap { width: 100%; overflow: auto; max-height: 580px; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle; }
+    th { position: sticky; top: 0; z-index: 1; background: #f8fafc; color: var(--muted); font-size: 12px; }
+    tr:hover td { background: #fbfdff; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 900;
+      background: #eef2ff;
+      color: #3730a3;
+      white-space: nowrap;
+    }
+
+    .badge.green { background: #dcfce7; color: #166534; }
+    .badge.amber { background: #fef3c7; color: #92400e; }
+    .badge.gray { background: #f1f5f9; color: #475569; }
+
+    .small-btn {
+      width: 36px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: white;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .small-btn:hover { background: var(--soft); }
+    .small-btn.danger { color: var(--red); }
+
+    .empty {
+      padding: 42px 18px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .bar-list { display: grid; gap: 12px; }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 90px 1fr 58px;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .bar-track {
+      height: 12px;
+      border-radius: 999px;
+      background: #e8eef7;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+    }
+
+    .insights {
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .insights strong { color: var(--ink); }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      padding: 12px 14px;
+      background: #172033;
+      color: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: .2s ease;
+      z-index: 10;
+      font-weight: 900;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 1120px) {
+      .shell { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; }
+      .workspace, .analytics, .config { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      main { padding: 18px; }
+      .topbar { display: grid; }
+      .toolbar .btn, .form-actions .btn { flex: 1 1 150px; }
+      .kpis, .filters, .two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <div class="brand-mark">學</div>
+        <div>
+          <strong>學校管理後台</strong>
+          <span>Supabase 連線版</span>
+        </div>
+      </div>
+      <nav>
+        <a href="#overview" class="active">總覽</a>
+        <a href="#editor">新增修改</a>
+        <a href="#schools">資料列表</a>
+        <a href="#analytics">分析</a>
+      </nav>
+      <div class="side-note">
+        此頁面呼叫原本的 Supabase Edge Function，不會在前端暴露 service role key。
+      </div>
+    </aside>
+
+    <main>
+      <section class="topbar" id="overview">
+        <div>
+          <h1>學校資料管理與分析</h1>
+          <p class="subtitle">可直接管理 Supabase `schools` 資料表，支援新增、修改、刪除、搜尋、篩選、匯出，以及依區域與分數進行管理分析。</p>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" id="newBtn" type="button">新增學校</button>
+          <button class="btn" id="reloadBtn" type="button">重新讀取</button>
+          <button class="btn" id="exportBtn" type="button">匯出目前資料</button>
+        </div>
+      </section>
+
+      <section class="card grid config" aria-label="Supabase 連線設定">
+        <label>
+          Supabase URL
+          <input id="supabaseUrl" placeholder="https://YOUR_PROJECT_REF.supabase.co" />
+        </label>
+        <label>
+          Anon Key
+          <input id="anonKey" placeholder="Supabase publishable / anon key" />
+        </label>
+        <label>
+          管理邀請碼
+          <input id="invitationCode" placeholder="例如 TYCTW" />
+        </label>
+        <button class="btn success" id="connectBtn" type="button">連線讀取</button>
+      </section>
+
+      <section class="grid kpis">
+        <article class="card kpi"><span>目前筆數</span><strong id="totalRows">0</strong><small id="loadedState">尚未連線</small></article>
+        <article class="card kpi"><span>平均分數門檻</span><strong id="avgPoints">0</strong><small>依目前篩選資料</small></article>
+        <article class="card kpi"><span>最高分數門檻</span><strong id="maxPoints">0</strong><small id="topSchool">尚無資料</small></article>
+        <article class="card kpi"><span>區域數</span><strong id="regionCount">0</strong><small>已匯入資料範圍</small></article>
+      </section>
+
+      <section class="grid workspace">
+        <article class="card" id="editor">
+          <div class="card-header">
+            <h2 id="formTitle">新增學校</h2>
+            <span class="badge gray" id="editState">未選取</span>
+          </div>
+          <div class="card-body">
+            <form class="form-grid" id="schoolForm">
+              <input type="hidden" id="id" />
+              <label>區域
+                <select id="region" required>
+                  <option value="taoyuan">桃園</option>
+                  <option value="kaohsiung">高雄</option>
+                  <option value="central">中投區</option>
+                  <option value="changhua">彰化</option>
+                  <option value="taipei">臺北</option>
+                  <option value="tainan">臺南</option>
+                  <option value="hsinchu">竹苗</option>
+                </select>
+              </label>
+              <label>學校 / 科別名稱
+                <input id="name" required placeholder="請輸入學校或科別名稱" />
+              </label>
+              <label>行政區 / 地區
+                <input id="district" placeholder="可留空" />
+              </label>
+              <div class="two">
+                <label>分數門檻
+                  <input id="points" type="number" step="0.1" required />
+                </label>
+                <label>積分 / 積點
+                  <input id="credits" type="number" step="0.1" placeholder="可留空" />
+                </label>
+              </div>
+              <div class="two">
+                <label>學校類型
+                  <input id="type" placeholder="普通高中 / 技術型高中" />
+                </label>
+                <label>公私立
+                  <select id="ownership">
+                    <option value="">未設定</option>
+                    <option value="public">public</option>
+                    <option value="private">private</option>
+                  </select>
+                </label>
+              </div>
+              <label>職群
+                <input id="vocational_group" placeholder="可留空" />
+              </label>
+              <div class="two">
+                <label>國文最低
+                  <input id="min_chinese" type="number" step="1" placeholder="可留空" />
+                </label>
+                <label>英文最低
+                  <input id="min_english" type="number" step="1" placeholder="可留空" />
+                </label>
+              </div>
+              <div class="two">
+                <label>數學最低
+                  <input id="min_math" type="number" step="1" placeholder="可留空" />
+                </label>
+                <label>自然最低
+                  <input id="min_science" type="number" step="1" placeholder="可留空" />
+                </label>
+              </div>
+              <label>社會最低
+                <input id="min_social" type="number" step="1" placeholder="可留空" />
+              </label>
+              <div class="form-actions">
+                <button class="btn success" id="saveBtn" type="submit">儲存到 Supabase</button>
+                <button class="btn" id="resetBtn" type="button">清除表單</button>
+              </div>
+            </form>
+          </div>
+        </article>
+
+        <article class="card" id="schools">
+          <div class="card-header">
+            <h2>資料列表</h2>
+            <span class="badge" id="visibleCount">0 筆</span>
+          </div>
+          <div class="filters">
+            <input id="searchInput" placeholder="搜尋名稱、類型、職群" />
+            <select id="filterRegion">
+              <option value="all">全部區域</option>
+              <option value="taoyuan">桃園</option>
+              <option value="kaohsiung">高雄</option>
+              <option value="central">中投區</option>
+              <option value="changhua">彰化</option>
+              <option value="taipei">臺北</option>
+              <option value="tainan">臺南</option>
+              <option value="hsinchu">竹苗</option>
+            </select>
+            <select id="filterOwnership">
+              <option value="all">全部屬性</option>
+              <option value="public">public</option>
+              <option value="private">private</option>
+            </select>
+            <select id="sortBy">
+              <option value="updated_at">最近更新</option>
+              <option value="points">分數高到低</option>
+              <option value="credits">積分高到低</option>
+              <option value="name">名稱</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>名稱</th>
+                  <th>區域</th>
+                  <th>地區</th>
+                  <th>類型</th>
+                  <th>屬性</th>
+                  <th>職群</th>
+                  <th>分數</th>
+                  <th>積分</th>
+                  <th>最低門檻</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+            <div class="empty" id="emptyState" hidden>目前沒有符合條件的資料</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid analytics" id="analytics">
+        <article class="card">
+          <div class="card-header">
+            <h2>區域資料量分析</h2>
+            <span class="badge green">即時計算</span>
+          </div>
+          <div class="card-body">
+            <div class="bar-list" id="regionChart"></div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card-header">
+            <h2>管理洞察</h2>
+            <span class="badge amber">篩選連動</span>
+          </div>
+          <div class="card-body">
+            <div class="insights" id="insights"></div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const configKey = "school-admin-supabase-config";
+    const regionNames = {
+      taoyuan: "桃園",
+      kaohsiung: "高雄",
+      central: "中投區",
+      changhua: "彰化",
+      taipei: "臺北",
+      tainan: "臺南",
+      hsinchu: "竹苗"
+    };
+    const fields = [
+      "id", "region", "name", "district", "points", "credits", "type", "ownership", "vocational_group",
+      "min_chinese", "min_english", "min_math", "min_science", "min_social"
+    ].reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
+
+    let schools = [];
+    let filters = { search: "", region: "all", ownership: "all", sortBy: "updated_at" };
+    let loading = false;
+
+    loadConfig();
+    render();
+
+    function getConfig() {
+      return {
+        supabaseUrl: document.getElementById("supabaseUrl").value.trim().replace(/\/$/, ""),
+        anonKey: document.getElementById("anonKey").value.trim(),
+        invitationCode: document.getElementById("invitationCode").value.trim().toUpperCase()
+      };
+    }
+
+    function saveConfig() {
+      const config = getConfig();
+      localStorage.setItem(configKey, JSON.stringify(config));
+      return config;
+    }
+
+    function loadConfig() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(configKey) || "{}");
+        document.getElementById("supabaseUrl").value = saved.supabaseUrl || "";
+        document.getElementById("anonKey").value = saved.anonKey || "";
+        document.getElementById("invitationCode").value = saved.invitationCode || "";
+      } catch {}
+    }
+
+    async function callBackend(action, payload = {}) {
+      const config = saveConfig();
+      if (!config.supabaseUrl || !config.anonKey || !config.invitationCode) {
+        throw new Error("請先填入 Supabase URL、Anon Key 與管理邀請碼。");
+      }
+
+      const response = await fetch(`${config.supabaseUrl}/functions/v1/backend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: config.anonKey,
+          Authorization: `Bearer ${config.anonKey}`
+        },
+        body: JSON.stringify({ action, invitationCode: config.invitationCode, ...payload })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.error) throw new Error(data.message || data.error || `Supabase 請求失敗 (${response.status})`);
+      return data;
+    }
+
+    async function loadSchools() {
+      setLoading(true);
+      try {
+        const data = await callBackend("adminListSchools", { region: filters.region });
+        schools = data.schools || [];
+        document.getElementById("loadedState").textContent = "已連線 Supabase";
+        showToast("已讀取 Supabase 資料");
+        render();
+      } catch (error) {
+        alert(error.message || "讀取失敗");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function setLoading(value) {
+      loading = value;
+      document.querySelectorAll("button").forEach(button => button.disabled = value);
+    }
+
+    function nullableNumber(id) {
+      return fields[id].value === "" ? null : Number(fields[id].value);
+    }
+
+    function formPayload() {
+      return {
+        id: fields.id.value || undefined,
+        region: fields.region.value,
+        name: fields.name.value.trim(),
+        district: fields.district.value.trim() || null,
+        points: Number(fields.points.value),
+        credits: nullableNumber("credits"),
+        type: fields.type.value.trim() || null,
+        ownership: fields.ownership.value || null,
+        vocational_group: fields.vocational_group.value.trim() || null,
+        min_chinese: nullableNumber("min_chinese"),
+        min_english: nullableNumber("min_english"),
+        min_math: nullableNumber("min_math"),
+        min_science: nullableNumber("min_science"),
+        min_social: nullableNumber("min_social")
+      };
+    }
+
+    function resetForm() {
+      document.getElementById("schoolForm").reset();
+      fields.id.value = "";
+      document.getElementById("formTitle").textContent = "新增學校";
+      document.getElementById("editState").textContent = "未選取";
+      fields.name.focus();
+    }
+
+    function editSchool(id) {
+      const school = schools.find(item => item.id === id);
+      if (!school) return;
+      for (const key of Object.keys(fields)) fields[key].value = school[key] ?? "";
+      document.getElementById("formTitle").textContent = "修改學校";
+      document.getElementById("editState").textContent = "編輯中";
+      document.getElementById("editor").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function deleteSchool(id) {
+      const school = schools.find(item => item.id === id);
+      if (!school || !confirm(`確定刪除「${school.name}」？`)) return;
+      setLoading(true);
+      try {
+        await callBackend("adminDeleteSchool", { id });
+        schools = schools.filter(item => item.id !== id);
+        render();
+        showToast("已刪除 Supabase 資料");
+      } catch (error) {
+        alert(error.message || "刪除失敗");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function getFiltered() {
+      const keyword = filters.search.trim().toLowerCase();
+      return schools
+        .filter(school => {
+          const text = [school.name, school.type, school.ownership, school.vocational_group, school.region].join(" ").toLowerCase();
+          return (!keyword || text.includes(keyword))
+            && (filters.region === "all" || school.region === filters.region)
+            && (filters.ownership === "all" || school.ownership === filters.ownership);
+        })
+        .sort((a, b) => {
+          if (filters.sortBy === "name") return String(a.name).localeCompare(String(b.name), "zh-Hant");
+          if (filters.sortBy === "updated_at") return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+          return Number(b[filters.sortBy] || 0) - Number(a[filters.sortBy] || 0);
+        });
+    }
+
+    function render() {
+      const list = getFiltered();
+      renderKpis(list);
+      renderRows(list);
+      renderChart(list);
+      renderInsights(list);
+    }
+
+    function renderKpis(list) {
+      const avg = list.length ? list.reduce((sum, item) => sum + Number(item.points || 0), 0) / list.length : 0;
+      const top = [...list].sort((a, b) => Number(b.points || 0) - Number(a.points || 0))[0];
+      document.getElementById("totalRows").textContent = list.length;
+      document.getElementById("avgPoints").textContent = avg.toFixed(1);
+      document.getElementById("maxPoints").textContent = top ? Number(top.points || 0).toFixed(1) : "0";
+      document.getElementById("topSchool").textContent = top ? top.name : "尚無資料";
+      document.getElementById("regionCount").textContent = new Set(list.map(item => item.region)).size;
+      document.getElementById("visibleCount").textContent = `${list.length} 筆`;
+    }
+
+    function renderRows(list) {
+      document.getElementById("rows").innerHTML = list.map(school => `
+        <tr>
+          <td><strong>${escapeHtml(school.name)}</strong><br><small>${formatDate(school.updated_at)}</small></td>
+          <td>${regionNames[school.region] || escapeHtml(school.region)}</td>
+          <td>${escapeHtml(school.district || "-")}</td>
+          <td>${school.type ? `<span class="badge">${escapeHtml(school.type)}</span>` : "-"}</td>
+          <td><span class="badge ${school.ownership === "public" ? "green" : school.ownership === "private" ? "amber" : "gray"}">${escapeHtml(school.ownership || "未設定")}</span></td>
+          <td>${escapeHtml(school.vocational_group || "-")}</td>
+          <td><strong>${num(school.points)}</strong></td>
+          <td>${school.credits == null ? "-" : num(school.credits)}</td>
+          <td>${minimumText(school)}</td>
+          <td>
+            <div class="row-actions">
+              <button class="small-btn" type="button" title="編輯" onclick="editSchool('${school.id}')">改</button>
+              <button class="small-btn danger" type="button" title="刪除" onclick="deleteSchool('${school.id}')">刪</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+      document.getElementById("emptyState").hidden = list.length > 0;
+    }
+
+    function renderChart(list) {
+      const totals = list.reduce((acc, item) => {
+        const key = regionNames[item.region] || item.region || "未設定";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      const max = Math.max(...rows.map(row => row[1]), 1);
+      document.getElementById("regionChart").innerHTML = rows.length
+        ? rows.map(([label, value]) => `
+          <div class="bar-row">
+            <span>${escapeHtml(label)}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${(value / max) * 100}%"></div></div>
+            <span>${value} 筆</span>
+          </div>
+        `).join("")
+        : `<div class="empty">尚無可分析資料</div>`;
+    }
+
+    function renderInsights(list) {
+      const typeCounts = list.reduce((acc, item) => {
+        const key = item.type || "未設定";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const mainType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+      const missingCredits = list.filter(item => item.credits == null).length;
+      const privateCount = list.filter(item => item.ownership === "private").length;
+      document.getElementById("insights").innerHTML = list.length ? `
+        <p><strong>主要類型：</strong>${escapeHtml(mainType?.[0] || "未設定")}，共 ${mainType?.[1] || 0} 筆。</p>
+        <p><strong>未填積分：</strong>${missingCredits} 筆，可檢查是否為不需要積分的區域。</p>
+        <p><strong>私立資料：</strong>${privateCount} 筆，佔目前篩選 ${(privateCount / list.length * 100).toFixed(1)}%。</p>
+        <p><strong>提醒：</strong>新增或修改後會直接寫入原本 schools 表，主站分析結果會跟著更新。</p>
+      ` : `<p>連線後會依目前資料產生分析洞察。</p>`;
+    }
+
+    function minimumText(school) {
+      const items = [
+        ["國", school.min_chinese], ["英", school.min_english], ["數", school.min_math],
+        ["自", school.min_science], ["社", school.min_social]
+      ].filter(([, value]) => value != null && value !== "");
+      return items.length ? items.map(([label, value]) => `${label}${value}`).join(" / ") : "-";
+    }
+
+    function num(value) {
+      return Number(value || 0).toFixed(Number(value) % 1 === 0 ? 0 : 1);
+    }
+
+    function formatDate(value) {
+      if (!value) return "尚未更新";
+      return new Intl.DateTimeFormat("zh-TW", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    document.getElementById("schoolForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      setLoading(true);
+      try {
+        const data = await callBackend("adminUpsertSchool", { school: formPayload() });
+        const index = schools.findIndex(item => item.id === data.school.id);
+        if (index >= 0) schools[index] = data.school;
+        else schools.unshift(data.school);
+        resetForm();
+        render();
+        showToast("已儲存到 Supabase");
+      } catch (error) {
+        alert(error.message || "儲存失敗");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    document.getElementById("connectBtn").addEventListener("click", loadSchools);
+    document.getElementById("reloadBtn").addEventListener("click", loadSchools);
+    document.getElementById("newBtn").addEventListener("click", () => {
+      resetForm();
+      document.getElementById("editor").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    document.getElementById("resetBtn").addEventListener("click", resetForm);
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(getFiltered(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `schools-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("searchInput").addEventListener("input", event => { filters.search = event.target.value; render(); });
+    document.getElementById("filterRegion").addEventListener("change", event => { filters.region = event.target.value; render(); });
+    document.getElementById("filterOwnership").addEventListener("change", event => { filters.ownership = event.target.value; render(); });
+    document.getElementById("sortBy").addEventListener("change", event => { filters.sortBy = event.target.value; render(); });
+
+    window.editSchool = editSchool;
+    window.deleteSchool = deleteSchool;
+  </script>
+</body>
+</html>
