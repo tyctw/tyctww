@@ -21,12 +21,18 @@
 
     * { box-sizing: border-box; }
 
+    html {
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
     body {
       margin: 0;
       font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
       color: var(--ink);
       background: #eef3f8;
       line-height: 1.5;
+      overflow-x: hidden;
     }
 
     button, input, select { font: inherit; }
@@ -138,6 +144,7 @@
       border: 1px solid var(--line);
       font-weight: 900;
       white-space: nowrap;
+      touch-action: manipulation;
     }
 
     .btn:hover { box-shadow: 0 8px 20px rgba(23, 32, 51, .08); }
@@ -145,6 +152,7 @@
     .btn.success { background: var(--green); color: white; border-color: var(--green); }
     .btn.danger { background: var(--red); color: white; border-color: var(--red); }
     .btn:disabled { opacity: .55; cursor: wait; }
+    .file-input { display: none; }
 
     .grid { display: grid; gap: 16px; }
     .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; }
@@ -170,6 +178,48 @@
 
     .card-header h2 { margin: 0; font-size: 18px; }
     .card-body { padding: 18px; }
+
+    .duplicate-panel {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 14px;
+      background: #fff7ed;
+      border-color: #fed7aa;
+    }
+
+    .duplicate-panel.ok {
+      background: #ecfdf5;
+      border-color: #bbf7d0;
+    }
+
+    .duplicate-panel strong {
+      font-size: 16px;
+    }
+
+    .duplicate-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .duplicate-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .duplicate-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: white;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      font-size: 12px;
+      font-weight: 900;
+    }
 
     .kpi {
       padding: 18px;
@@ -204,6 +254,7 @@
 
     input, select {
       width: 100%;
+      min-height: 44px;
       padding: 10px 11px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -229,7 +280,7 @@
       background: #fafcff;
     }
 
-    .table-wrap { width: 100%; overflow: auto; max-height: 580px; }
+    .table-wrap { width: 100%; overflow: auto; max-height: 580px; -webkit-overflow-scrolling: touch; }
     table { width: 100%; border-collapse: collapse; min-width: 980px; }
     th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle; }
     th { position: sticky; top: 0; z-index: 1; background: #f8fafc; color: var(--muted); font-size: 12px; }
@@ -325,16 +376,191 @@
 
     @media (max-width: 1120px) {
       .shell { grid-template-columns: 1fr; }
-      aside { position: static; height: auto; }
+      aside { position: static; height: auto; padding: 16px 18px; }
+      nav {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+      }
+      nav::-webkit-scrollbar { display: none; }
+      nav a { flex: 0 0 auto; }
+      .side-note { display: none; }
       .workspace, .analytics, .config { grid-template-columns: 1fr; }
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 760px) {
-      main { padding: 18px; }
-      .topbar { display: grid; }
-      .toolbar .btn, .form-actions .btn { flex: 1 1 150px; }
+      aside { gap: 12px; padding: 14px; }
+      .brand {
+        padding-bottom: 12px;
+      }
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+      }
+      nav a {
+        padding: 9px 11px;
+        font-size: 13px;
+      }
+      main { padding: 14px; }
+      .topbar {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      h1 { font-size: 26px; }
+      .subtitle {
+        font-size: 14px;
+        margin-top: 6px;
+      }
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .toolbar .btn:first-child {
+        grid-column: 1 / -1;
+      }
+      .toolbar .btn, .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+        flex: 1 1 150px;
+      }
+      .grid { gap: 12px; }
+      .card {
+        border-radius: 8px;
+        box-shadow: 0 10px 24px rgba(23, 32, 51, .08);
+      }
+      .card-header {
+        padding: 13px 14px;
+      }
+      .card-header h2 { font-size: 16px; }
+      .card-body { padding: 14px; }
+      .config {
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+      .kpi {
+        min-height: 96px;
+        padding: 14px;
+      }
+      .kpi strong { font-size: 28px; }
+      .kpi small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .form-grid { gap: 11px; }
+      .filters {
+        gap: 8px;
+        padding: 12px;
+      }
+      input, select {
+        font-size: 16px;
+      }
+      .bar-row {
+        grid-template-columns: 76px 1fr 48px;
+        gap: 8px;
+      }
+      .toast {
+        right: 14px;
+        left: 14px;
+        bottom: 14px;
+        text-align: center;
+      }
       .kpis, .filters, .two { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .table-wrap {
+        max-height: none;
+        overflow: visible;
+        padding: 10px;
+        background: #fafcff;
+      }
+
+      table, tbody, tr, td {
+        display: block;
+        width: 100%;
+      }
+
+      table {
+        min-width: 0;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: grid;
+        gap: 10px;
+      }
+
+      tr {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: white;
+        box-shadow: 0 8px 18px rgba(23, 32, 51, .06);
+        overflow: hidden;
+      }
+
+      tr:hover td { background: transparent; }
+
+      td {
+        display: grid;
+        grid-template-columns: minmax(74px, 32%) minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 10px 12px;
+        border-bottom: 1px solid #edf2f7;
+        font-size: 13px;
+        word-break: break-word;
+      }
+
+      td:first-child {
+        display: block;
+        padding: 13px 12px;
+        background: #f8fafc;
+      }
+
+      td:first-child::before {
+        display: none;
+      }
+
+      td:last-child {
+        border-bottom: 0;
+      }
+
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .row-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .small-btn {
+        width: 100%;
+        min-height: 40px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      main { padding: 10px; }
+      .toolbar { grid-template-columns: 1fr; }
+      .toolbar .btn:first-child { grid-column: auto; }
+      .kpis { grid-template-columns: 1fr; }
+      h1 { font-size: 23px; }
+      .subtitle { font-size: 13px; }
+      .config, .filters, .card-body { padding: 12px; }
     }
   </style>
 </head>
@@ -368,7 +594,11 @@
         <div class="toolbar">
           <button class="btn primary" id="newBtn" type="button">新增學校</button>
           <button class="btn" id="reloadBtn" type="button">重新讀取</button>
-          <button class="btn" id="exportBtn" type="button">匯出目前資料</button>
+          <button class="btn" id="duplicateBtn" type="button">檢查重複</button>
+          <button class="btn" id="sampleBtn" type="button">下載 CSV 範例</button>
+          <button class="btn" id="exportBtn" type="button">匯出 CSV</button>
+          <button class="btn" id="uploadBtn" type="button">上傳 CSV</button>
+          <input class="file-input" id="csvFile" type="file" accept=".csv,text/csv" />
         </div>
       </section>
 
@@ -393,6 +623,12 @@
         <article class="card kpi"><span>平均分數門檻</span><strong id="avgPoints">0</strong><small>依目前篩選資料</small></article>
         <article class="card kpi"><span>最高分數門檻</span><strong id="maxPoints">0</strong><small id="topSchool">尚無資料</small></article>
         <article class="card kpi"><span>區域數</span><strong id="regionCount">0</strong><small>已匯入資料範圍</small></article>
+      </section>
+
+      <section class="card duplicate-panel ok" id="duplicateSummary" aria-live="polite">
+        <strong id="duplicateTitle">尚未發現重複資料</strong>
+        <p id="duplicateText">載入資料後會自動比對相同區域、名稱、地區、類型、屬性與職群的資料。</p>
+        <div class="duplicate-list" id="duplicateList"></div>
       </section>
 
       <section class="grid workspace">
@@ -559,6 +795,10 @@
       tainan: "臺南",
       hsinchu: "竹苗"
     };
+    const csvHeaders = [
+      "id", "region", "name", "district", "points", "credits", "type", "ownership",
+      "vocational_group", "min_chinese", "min_english", "min_math", "min_science", "min_social"
+    ];
     const fields = [
       "id", "region", "name", "district", "points", "credits", "type", "ownership", "vocational_group",
       "min_chinese", "min_english", "min_math", "min_science", "min_social"
@@ -657,6 +897,65 @@
       };
     }
 
+    function normalizeText(value) {
+      return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+    }
+
+    function duplicateKey(school) {
+      return [
+        school.region,
+        school.name,
+        school.district,
+        school.type,
+        school.ownership,
+        school.vocational_group
+      ].map(normalizeText).join("|");
+    }
+
+    function findDuplicateGroups(list) {
+      const groups = new Map();
+      for (const school of list) {
+        const key = duplicateKey(school);
+        if (!normalizeText(school.name)) continue;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(school);
+      }
+      return [...groups.values()]
+        .filter(group => group.length > 1)
+        .map(group => ({ key: duplicateKey(group[0]), items: group }));
+    }
+
+    function duplicateIdSet(list) {
+      const ids = new Set();
+      for (const group of findDuplicateGroups(list)) {
+        group.items.forEach(item => item.id && ids.add(item.id));
+      }
+      return ids;
+    }
+
+    function duplicateMatches(school, list) {
+      const key = duplicateKey(school);
+      return list.filter(item => item.id !== school.id && duplicateKey(item) === key);
+    }
+
+    function renderDuplicateSummary(list) {
+      const groups = findDuplicateGroups(list);
+      const panel = document.getElementById("duplicateSummary");
+      const title = document.getElementById("duplicateTitle");
+      const text = document.getElementById("duplicateText");
+      const duplicateList = document.getElementById("duplicateList");
+
+      panel.classList.toggle("ok", groups.length === 0);
+      title.textContent = groups.length === 0 ? "尚未發現重複資料" : `發現 ${groups.length} 組疑似重複資料`;
+      text.textContent = groups.length === 0
+        ? "系統會自動比對相同區域、名稱、地區、類型、屬性與職群的資料。"
+        : "請檢查下列資料是否為同一筆學校或科別；重複列也會在列表中標示。";
+      duplicateList.innerHTML = groups.slice(0, 8).map(group => {
+        const sample = group.items[0];
+        return `<span class="duplicate-chip">${escapeHtml(regionNames[sample.region] || sample.region)} / ${escapeHtml(sample.name)} × ${group.items.length}</span>`;
+      }).join("");
+    }
+
     function resetForm() {
       document.getElementById("schoolForm").reset();
       fields.id.value = "";
@@ -709,6 +1008,7 @@
     function render() {
       const list = getFiltered();
       renderKpis(list);
+      renderDuplicateSummary(schools);
       renderRows(list);
       renderChart(list);
       renderInsights(list);
@@ -726,18 +1026,19 @@
     }
 
     function renderRows(list) {
+      const duplicateIds = duplicateIdSet(schools);
       document.getElementById("rows").innerHTML = list.map(school => `
         <tr>
-          <td><strong>${escapeHtml(school.name)}</strong><br><small>${formatDate(school.updated_at)}</small></td>
-          <td>${regionNames[school.region] || escapeHtml(school.region)}</td>
-          <td>${escapeHtml(school.district || "-")}</td>
-          <td>${school.type ? `<span class="badge">${escapeHtml(school.type)}</span>` : "-"}</td>
-          <td><span class="badge ${school.ownership === "public" ? "green" : school.ownership === "private" ? "amber" : "gray"}">${escapeHtml(school.ownership || "未設定")}</span></td>
-          <td>${escapeHtml(school.vocational_group || "-")}</td>
-          <td><strong>${num(school.points)}</strong></td>
-          <td>${school.credits == null ? "-" : num(school.credits)}</td>
-          <td>${minimumText(school)}</td>
-          <td>
+          <td data-label="名稱"><strong>${escapeHtml(school.name)}</strong> ${duplicateIds.has(school.id) ? '<span class="badge amber">重複</span>' : ''}<br><small>${formatDate(school.updated_at)}</small></td>
+          <td data-label="區域">${regionNames[school.region] || escapeHtml(school.region)}</td>
+          <td data-label="地區">${escapeHtml(school.district || "-")}</td>
+          <td data-label="類型">${school.type ? `<span class="badge">${escapeHtml(school.type)}</span>` : "-"}</td>
+          <td data-label="屬性"><span class="badge ${school.ownership === "public" ? "green" : school.ownership === "private" ? "amber" : "gray"}">${escapeHtml(school.ownership || "未設定")}</span></td>
+          <td data-label="職群">${escapeHtml(school.vocational_group || "-")}</td>
+          <td data-label="分數"><strong>${num(school.points)}</strong></td>
+          <td data-label="積分">${school.credits == null ? "-" : num(school.credits)}</td>
+          <td data-label="最低門檻">${minimumText(school)}</td>
+          <td data-label="操作">
             <div class="row-actions">
               <button class="small-btn" type="button" title="編輯" onclick="editSchool('${school.id}')">改</button>
               <button class="small-btn danger" type="button" title="刪除" onclick="deleteSchool('${school.id}')">刪</button>
@@ -810,6 +1111,170 @@
         .replaceAll("'", "&#039;");
     }
 
+    function csvEscape(value) {
+      const text = value === null || value === undefined ? "" : String(value);
+      return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    }
+
+    function toCsv(list) {
+      const rows = [csvHeaders.join(",")];
+      for (const school of list) {
+        rows.push(csvHeaders.map(header => csvEscape(school[header])).join(","));
+      }
+      return `\uFEFF${rows.join("\r\n")}`;
+    }
+
+    function sampleCsv() {
+      return toCsv([
+        {
+          id: "",
+          region: "taoyuan",
+          name: "範例高中普通科",
+          district: "桃園區",
+          points: 30,
+          credits: 25,
+          type: "普通高中",
+          ownership: "public",
+          vocational_group: "普通科",
+          min_chinese: 6,
+          min_english: 6,
+          min_math: 6,
+          min_science: "",
+          min_social: ""
+        }
+      ]);
+    }
+
+    function parseCsvLine(line) {
+      const values = [];
+      let current = "";
+      let quoted = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        const next = line[i + 1];
+        if (char === '"' && quoted && next === '"') {
+          current += '"';
+          i += 1;
+        } else if (char === '"') {
+          quoted = !quoted;
+        } else if (char === "," && !quoted) {
+          values.push(current);
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      values.push(current);
+      return values;
+    }
+
+    function parseCsv(text) {
+      const clean = text.replace(/^\uFEFF/, "");
+      const lines = clean.split(/\r?\n/).filter(line => line.trim() !== "");
+      if (lines.length < 2) return [];
+      const headers = parseCsvLine(lines[0]).map(header => header.trim());
+      return lines.slice(1).map(line => {
+        const values = parseCsvLine(line);
+        const row = {};
+        headers.forEach((header, index) => {
+          if (csvHeaders.includes(header)) row[header] = values[index] ?? "";
+        });
+        return normalizeImportedSchool(row);
+      }).filter(row => row.name && row.region);
+    }
+
+    function optionalNumber(value) {
+      if (value === null || value === undefined || String(value).trim() === "") return null;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function normalizeImportedSchool(row) {
+      return {
+        id: normalizeText(row.id) ? String(row.id).trim() : undefined,
+        region: String(row.region || "").trim(),
+        name: String(row.name || "").trim(),
+        district: String(row.district || "").trim() || null,
+        points: Number(row.points || 0),
+        credits: optionalNumber(row.credits),
+        type: String(row.type || "").trim() || null,
+        ownership: String(row.ownership || "").trim() || null,
+        vocational_group: String(row.vocational_group || "").trim() || null,
+        min_chinese: optionalNumber(row.min_chinese),
+        min_english: optionalNumber(row.min_english),
+        min_math: optionalNumber(row.min_math),
+        min_science: optionalNumber(row.min_science),
+        min_social: optionalNumber(row.min_social)
+      };
+    }
+
+    function downloadFile(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function uploadCsvFile(file) {
+      const parsed = parseCsv(await file.text());
+      if (parsed.length === 0) {
+        alert("CSV 沒有可上傳的學校資料。");
+        return;
+      }
+
+      const uploadDuplicateGroups = findDuplicateGroups(parsed);
+      if (uploadDuplicateGroups.length > 0) {
+        alert(`CSV 內有 ${uploadDuplicateGroups.length} 組疑似重複資料，請先整理後再上傳。`);
+        return;
+      }
+
+      let updateMatches = 0;
+      let ambiguousMatches = 0;
+      const readyRows = parsed.map(row => {
+        if (row.id) return row;
+        const matches = duplicateMatches(row, schools);
+        if (matches.length === 1) {
+          updateMatches += 1;
+          return { ...row, id: matches[0].id };
+        }
+        if (matches.length > 1) ambiguousMatches += 1;
+        return row;
+      });
+
+      if (ambiguousMatches > 0) {
+        alert(`有 ${ambiguousMatches} 筆 CSV 資料對應到多筆既有資料，請先用「檢查重複」整理後再上傳。`);
+        return;
+      }
+
+      const message = [
+        `準備上傳 ${parsed.length} 筆資料。`,
+        `會更新既有資料：${updateMatches} 筆。`,
+        `會新增資料：${parsed.length - updateMatches} 筆。`,
+        "確認後會寫入 Supabase。"
+      ].join("\n");
+
+      if (!confirm(message)) return;
+
+      setLoading(true);
+      try {
+        const data = await callBackend("adminBulkUpsertSchools", { schools: readyRows });
+        for (const school of data.schools || []) {
+          const index = schools.findIndex(item => item.id === school.id);
+          if (index >= 0) schools[index] = school;
+          else schools.unshift(school);
+        }
+        render();
+        showToast(`已上傳 ${data.count || parsed.length} 筆資料`);
+      } catch (error) {
+        alert(error.message || "CSV 上傳失敗");
+      } finally {
+        setLoading(false);
+      }
+    }
+
     function showToast(message) {
       const toast = document.getElementById("toast");
       toast.textContent = message;
@@ -820,9 +1285,12 @@
 
     document.getElementById("schoolForm").addEventListener("submit", async event => {
       event.preventDefault();
+      const payload = formPayload();
+      const matches = duplicateMatches(payload, schools);
+      if (matches.length > 0 && !confirm(`發現 ${matches.length} 筆疑似重複資料，仍要儲存嗎？`)) return;
       setLoading(true);
       try {
-        const data = await callBackend("adminUpsertSchool", { school: formPayload() });
+        const data = await callBackend("adminUpsertSchool", { school: payload });
         const index = schools.findIndex(item => item.id === data.school.id);
         if (index >= 0) schools[index] = data.school;
         else schools.unshift(data.school);
@@ -843,14 +1311,33 @@
       document.getElementById("editor").scrollIntoView({ behavior: "smooth", block: "start" });
     });
     document.getElementById("resetBtn").addEventListener("click", resetForm);
+    document.getElementById("duplicateBtn").addEventListener("click", () => {
+      renderDuplicateSummary(schools);
+      document.getElementById("duplicateSummary").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    document.getElementById("sampleBtn").addEventListener("click", () => {
+      downloadFile(
+        "schools-upload-sample.csv",
+        sampleCsv(),
+        "text/csv;charset=utf-8"
+      );
+      showToast("已下載 CSV 範例");
+    });
     document.getElementById("exportBtn").addEventListener("click", () => {
-      const blob = new Blob([JSON.stringify(getFiltered(), null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `schools-${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadFile(
+        `schools-${new Date().toISOString().slice(0, 10)}.csv`,
+        toCsv(getFiltered()),
+        "text/csv;charset=utf-8"
+      );
+      showToast("已匯出 CSV");
+    });
+    document.getElementById("uploadBtn").addEventListener("click", () => {
+      document.getElementById("csvFile").click();
+    });
+    document.getElementById("csvFile").addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      if (file) await uploadCsvFile(file);
+      event.target.value = "";
     });
 
     document.getElementById("searchInput").addEventListener("input", event => { filters.search = event.target.value; render(); });
