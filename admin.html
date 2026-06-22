@@ -271,6 +271,61 @@
     .form-grid { display: grid; gap: 13px; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+    .history-editor {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fafcff;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .history-header strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .history-rows {
+      display: grid;
+      gap: 8px;
+    }
+
+    .history-row {
+      display: grid;
+      grid-template-columns: minmax(92px, .7fr) minmax(86px, .7fr) minmax(86px, .7fr) minmax(120px, 1fr) 36px;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .history-row input {
+      min-height: 38px;
+      padding: 8px 9px;
+    }
+
+    .history-empty {
+      padding: 10px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: white;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
     .filters {
       display: grid;
       grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(130px, 180px));
@@ -595,6 +650,8 @@
           <button class="btn primary" id="newBtn" type="button">新增學校</button>
           <button class="btn" id="reloadBtn" type="button">重新讀取</button>
           <button class="btn" id="duplicateBtn" type="button">檢查重複</button>
+          <button class="btn" id="archiveCurrentBtn" type="button">目前成績轉歷年</button>
+          <button class="btn danger" id="clearHistoryBtn" type="button">清空歷年成績</button>
           <button class="btn" id="sampleBtn" type="button">下載 CSV 範例</button>
           <button class="btn" id="exportBtn" type="button">匯出 CSV</button>
           <button class="btn" id="uploadBtn" type="button">上傳 CSV</button>
@@ -664,6 +721,16 @@
                 <label>積分 / 積點
                   <input id="credits" type="number" step="0.1" placeholder="可留空" />
                 </label>
+              </div>
+              <div class="history-editor">
+                <div class="history-header">
+                  <strong>歷年成績</strong>
+                  <div class="history-actions">
+                    <button class="small-btn" id="addHistoryBtn" type="button" title="新增歷年成績">＋</button>
+                    <button class="small-btn" id="copyCurrentHistoryBtn" type="button" title="將目前分數加入歷年">入</button>
+                  </div>
+                </div>
+                <div class="history-rows" id="historicalRows"></div>
               </div>
               <div class="two">
                 <label>學校類型
@@ -748,6 +815,7 @@
                   <th>職群</th>
                   <th>分數</th>
                   <th>積分</th>
+                  <th>歷年</th>
                   <th>最低門檻</th>
                   <th>操作</th>
                 </tr>
@@ -797,7 +865,7 @@
     };
     const csvHeaders = [
       "id", "region", "name", "district", "points", "credits", "type", "ownership",
-      "vocational_group", "min_chinese", "min_english", "min_math", "min_science", "min_social"
+      "vocational_group", "historical_scores", "min_chinese", "min_english", "min_math", "min_science", "min_social"
     ];
     const fields = [
       "id", "region", "name", "district", "points", "credits", "type", "ownership", "vocational_group",
@@ -805,10 +873,12 @@
     ].reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
 
     let schools = [];
+    let historicalScoresDraft = [];
     let filters = { search: "", region: "all", ownership: "all", sortBy: "updated_at" };
     let loading = false;
 
     loadConfig();
+    renderHistoricalEditor();
     render();
 
     function getConfig() {
@@ -878,6 +948,97 @@
       return fields[id].value === "" ? null : Number(fields[id].value);
     }
 
+    function currentTaiwanYearLabel() {
+      return `${new Date().getFullYear() - 1911}年`;
+    }
+
+    function normalizeHistoricalScores(scores) {
+      const parsed = typeof scores === "string"
+        ? JSON.parse(scores || "[]")
+        : Array.isArray(scores) ? scores : [];
+      return parsed
+        .map(item => ({
+          year: String(item?.year || "").trim(),
+          points: optionalNumber(item?.points),
+          credits: optionalNumber(item?.credits),
+          note: String(item?.note || "").trim()
+        }))
+        .filter(item => item.year && item.points !== null);
+    }
+
+    function historicalScoresFromSchool(school) {
+      try {
+        return normalizeHistoricalScores(school?.historical_scores ?? school?.historicalScores ?? []);
+      } catch {
+        return [];
+      }
+    }
+
+    function safeNormalizeHistoricalScores(scores) {
+      try {
+        return normalizeHistoricalScores(scores);
+      } catch {
+        return [];
+      }
+    }
+
+    function upsertCurrentScoreToHistory(school, year, note = "目前成績轉存") {
+      const cleanYear = String(year || "").trim();
+      if (!cleanYear) return historicalScoresFromSchool(school);
+      const points = optionalNumber(school.points);
+      if (points === null) return historicalScoresFromSchool(school);
+      const current = {
+        year: cleanYear,
+        points,
+        credits: optionalNumber(school.credits),
+        note
+      };
+      return [current, ...historicalScoresFromSchool(school).filter(item => item.year !== cleanYear)];
+    }
+
+    function renderHistoricalEditor() {
+      const container = document.getElementById("historicalRows");
+      container.innerHTML = historicalScoresDraft.length
+        ? historicalScoresDraft.map((item, index) => `
+          <div class="history-row">
+            <label>年度
+              <input value="${escapeHtml(item.year)}" placeholder="115年" oninput="updateHistoricalScore(${index}, 'year', this.value)" />
+            </label>
+            <label>分數
+              <input type="number" step="0.1" value="${item.points ?? ""}" oninput="updateHistoricalScore(${index}, 'points', this.value)" />
+            </label>
+            <label>積分
+              <input type="number" step="0.1" value="${item.credits ?? ""}" placeholder="可留空" oninput="updateHistoricalScore(${index}, 'credits', this.value)" />
+            </label>
+            <label>備註
+              <input value="${escapeHtml(item.note || "")}" placeholder="可留空" oninput="updateHistoricalScore(${index}, 'note', this.value)" />
+            </label>
+            <button class="small-btn danger" type="button" title="移除" onclick="removeHistoricalScore(${index})">刪</button>
+          </div>
+        `).join("")
+        : `<div class="history-empty">尚未新增歷年成績。可按「＋」新增，或按「入」將目前分數加入歷年。</div>`;
+    }
+
+    function updateHistoricalScore(index, key, value) {
+      if (!historicalScoresDraft[index]) return;
+      historicalScoresDraft[index][key] = key === "points" || key === "credits" ? optionalNumber(value) : String(value || "").trim();
+    }
+
+    function removeHistoricalScore(index) {
+      historicalScoresDraft.splice(index, 1);
+      renderHistoricalEditor();
+    }
+
+    function addHistoricalScore(item = {}) {
+      historicalScoresDraft.unshift({
+        year: item.year || currentTaiwanYearLabel(),
+        points: item.points ?? optionalNumber(fields.points.value),
+        credits: item.credits ?? optionalNumber(fields.credits.value),
+        note: item.note || ""
+      });
+      renderHistoricalEditor();
+    }
+
     function formPayload() {
       return {
         id: fields.id.value || undefined,
@@ -886,6 +1047,7 @@
         district: fields.district.value.trim() || null,
         points: Number(fields.points.value),
         credits: nullableNumber("credits"),
+        historical_scores: normalizeHistoricalScores(historicalScoresDraft),
         type: fields.type.value.trim() || null,
         ownership: fields.ownership.value || null,
         vocational_group: fields.vocational_group.value.trim() || null,
@@ -959,6 +1121,8 @@
     function resetForm() {
       document.getElementById("schoolForm").reset();
       fields.id.value = "";
+      historicalScoresDraft = [];
+      renderHistoricalEditor();
       document.getElementById("formTitle").textContent = "新增學校";
       document.getElementById("editState").textContent = "未選取";
       fields.name.focus();
@@ -968,6 +1132,8 @@
       const school = schools.find(item => item.id === id);
       if (!school) return;
       for (const key of Object.keys(fields)) fields[key].value = school[key] ?? "";
+      historicalScoresDraft = historicalScoresFromSchool(school);
+      renderHistoricalEditor();
       document.getElementById("formTitle").textContent = "修改學校";
       document.getElementById("editState").textContent = "編輯中";
       document.getElementById("editor").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1037,6 +1203,7 @@
           <td data-label="職群">${escapeHtml(school.vocational_group || "-")}</td>
           <td data-label="分數"><strong>${num(school.points)}</strong></td>
           <td data-label="積分">${school.credits == null ? "-" : num(school.credits)}</td>
+          <td data-label="歷年">${historicalSummary(school)}</td>
           <td data-label="最低門檻">${minimumText(school)}</td>
           <td data-label="操作">
             <div class="row-actions">
@@ -1093,6 +1260,13 @@
       return items.length ? items.map(([label, value]) => `${label}${value}`).join(" / ") : "-";
     }
 
+    function historicalSummary(school) {
+      const scores = historicalScoresFromSchool(school);
+      if (!scores.length) return "-";
+      const latest = scores[0];
+      return `<span class="badge green">${escapeHtml(latest.year)} ${num(latest.points)}</span>`;
+    }
+
     function num(value) {
       return Number(value || 0).toFixed(Number(value) % 1 === 0 ? 0 : 1);
     }
@@ -1119,7 +1293,10 @@
     function toCsv(list) {
       const rows = [csvHeaders.join(",")];
       for (const school of list) {
-        rows.push(csvHeaders.map(header => csvEscape(school[header])).join(","));
+        rows.push(csvHeaders.map(header => {
+          if (header === "historical_scores") return csvEscape(JSON.stringify(historicalScoresFromSchool(school)));
+          return csvEscape(school[header]);
+        }).join(","));
       }
       return `\uFEFF${rows.join("\r\n")}`;
     }
@@ -1136,6 +1313,7 @@
           type: "普通高中",
           ownership: "public",
           vocational_group: "普通科",
+          historical_scores: JSON.stringify([{ year: "114年", points: 29.6, credits: 24, note: "範例" }]),
           min_chinese: 6,
           min_english: 6,
           min_math: 6,
@@ -1200,6 +1378,7 @@
         type: String(row.type || "").trim() || null,
         ownership: String(row.ownership || "").trim() || null,
         vocational_group: String(row.vocational_group || "").trim() || null,
+        historical_scores: safeNormalizeHistoricalScores(row.historical_scores),
         min_chinese: optionalNumber(row.min_chinese),
         min_english: optionalNumber(row.min_english),
         min_math: optionalNumber(row.min_math),
@@ -1260,16 +1439,105 @@
 
       setLoading(true);
       try {
-        const data = await callBackend("adminBulkUpsertSchools", { schools: readyRows });
-        for (const school of data.schools || []) {
-          const index = schools.findIndex(item => item.id === school.id);
-          if (index >= 0) schools[index] = school;
-          else schools.unshift(school);
+        let done = 0;
+        for (const row of readyRows) {
+          const data = await callBackend("adminUpsertSchool", { school: row });
+          const index = schools.findIndex(item => item.id === data.school.id);
+          if (index >= 0) schools[index] = data.school;
+          else schools.unshift(data.school);
+          done += 1;
+          document.getElementById("loadedState").textContent = `上傳中 ${done}/${readyRows.length}`;
         }
         render();
-        showToast(`已上傳 ${data.count || parsed.length} 筆資料`);
+        document.getElementById("loadedState").textContent = "已連線 Supabase";
+        showToast(`已上傳 ${done} 筆資料`);
       } catch (error) {
         alert(error.message || "CSV 上傳失敗");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function archiveCurrentScores() {
+      const list = getFiltered().filter(school => school.id);
+      if (list.length === 0) {
+        alert("目前篩選列表沒有可轉存的資料。");
+        return;
+      }
+
+      const year = prompt("請輸入要寫入的歷年年度；若同年度已存在，會以目前分數取代。", currentTaiwanYearLabel());
+      if (!year || !year.trim()) return;
+
+      const message = [
+        `準備將目前篩選出的 ${list.length} 筆資料轉存為「${year.trim()}」歷年成績。`,
+        "每筆會保留目前分數與積分，並寫回 Supabase。",
+        "確認後開始執行。"
+      ].join("\n");
+      if (!confirm(message)) return;
+
+      setLoading(true);
+      try {
+        let done = 0;
+        for (const school of list) {
+          const payload = {
+            ...school,
+            historical_scores: upsertCurrentScoreToHistory(school, year.trim())
+          };
+          const data = await callBackend("adminUpsertSchool", { school: payload });
+          const index = schools.findIndex(item => item.id === data.school.id);
+          if (index >= 0) schools[index] = data.school;
+          done += 1;
+          document.getElementById("loadedState").textContent = `轉存中 ${done}/${list.length}`;
+        }
+        render();
+        document.getElementById("loadedState").textContent = "已連線 Supabase";
+        showToast(`已轉存 ${done} 筆歷年成績`);
+      } catch (error) {
+        alert(error.message || "轉存歷年成績失敗");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function clearHistoricalScores() {
+      const list = getFiltered().filter(school => school.id && historicalScoresFromSchool(school).length > 0);
+      if (list.length === 0) {
+        alert("目前篩選列表沒有可刪除的歷年成績。");
+        return;
+      }
+
+      const message = [
+        `準備清空目前篩選列表中 ${list.length} 筆資料的歷年成績。`,
+        "此操作只會刪除 historical_scores，不會刪除學校資料或目前分數門檻。",
+        "確認後會寫回 Supabase。"
+      ].join("\n");
+      if (!confirm(message)) return;
+
+      setLoading(true);
+      try {
+        let done = 0;
+        for (const school of list) {
+          const data = await callBackend("adminUpsertSchool", {
+            school: {
+              ...school,
+              historical_scores: []
+            }
+          });
+          const index = schools.findIndex(item => item.id === data.school.id);
+          if (index >= 0) schools[index] = data.school;
+          done += 1;
+          document.getElementById("loadedState").textContent = `清空中 ${done}/${list.length}`;
+        }
+        historicalScoresDraft = normalizeHistoricalScores(historicalScoresDraft);
+        if (fields.id.value && list.some(school => school.id === fields.id.value)) {
+          historicalScoresDraft = [];
+          renderHistoricalEditor();
+        }
+        render();
+        document.getElementById("loadedState").textContent = "已連線 Supabase";
+        showToast(`已清空 ${done} 筆歷年成績`);
+      } catch (error) {
+        alert(error.message || "清空歷年成績失敗");
       } finally {
         setLoading(false);
       }
@@ -1311,6 +1579,18 @@
       document.getElementById("editor").scrollIntoView({ behavior: "smooth", block: "start" });
     });
     document.getElementById("resetBtn").addEventListener("click", resetForm);
+    document.getElementById("addHistoryBtn").addEventListener("click", () => addHistoricalScore());
+    document.getElementById("copyCurrentHistoryBtn").addEventListener("click", () => {
+      if (optionalNumber(fields.points.value) === null) {
+        alert("請先輸入目前分數門檻，再加入歷年成績。");
+        return;
+      }
+      const school = { points: fields.points.value, credits: fields.credits.value, historical_scores: historicalScoresDraft };
+      historicalScoresDraft = upsertCurrentScoreToHistory(school, currentTaiwanYearLabel(), "手動加入");
+      renderHistoricalEditor();
+    });
+    document.getElementById("archiveCurrentBtn").addEventListener("click", archiveCurrentScores);
+    document.getElementById("clearHistoryBtn").addEventListener("click", clearHistoricalScores);
     document.getElementById("duplicateBtn").addEventListener("click", () => {
       renderDuplicateSummary(schools);
       document.getElementById("duplicateSummary").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1347,6 +1627,8 @@
 
     window.editSchool = editSchool;
     window.deleteSchool = deleteSchool;
+    window.updateHistoricalScore = updateHistoricalScore;
+    window.removeHistoricalScore = removeHistoricalScore;
   </script>
 </body>
 </html>
