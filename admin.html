@@ -904,24 +904,49 @@
       } catch {}
     }
 
-    async function callBackend(action, payload = {}) {
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function callBackend(action, payload = {}, options = {}) {
       const config = saveConfig();
       if (!config.supabaseUrl || !config.anonKey || !config.invitationCode) {
         throw new Error("請先填入 Supabase URL、Anon Key 與管理邀請碼。");
       }
 
-      const response = await fetch(`${config.supabaseUrl}/functions/v1/backend`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: config.anonKey,
-          Authorization: `Bearer ${config.anonKey}`
-        },
-        body: JSON.stringify({ action, invitationCode: config.invitationCode, ...payload })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.error) throw new Error(data.message || data.error || `Supabase 請求失敗 (${response.status})`);
-      return data;
+      const maxRetries = options.retries ?? 3;
+      let lastError;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        try {
+          const response = await fetch(`${config.supabaseUrl}/functions/v1/backend`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: config.anonKey,
+              Authorization: `Bearer ${config.anonKey}`
+            },
+            body: JSON.stringify({ action, invitationCode: config.invitationCode, ...payload })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || data.error) {
+            const error = new Error(data.message || data.error || `Supabase 請求失敗 (${response.status})`);
+            error.status = response.status;
+            error.backendError = data.error;
+            throw error;
+          }
+          return data;
+        } catch (error) {
+          lastError = error;
+          const status = error.status || 0;
+          const retriable = status === 429 || status >= 500 || /temporarily unavailable|failed to fetch|network/i.test(error.message || "");
+          if (!retriable || attempt === maxRetries) throw error;
+          document.getElementById("loadedState").textContent = `服務忙碌，重試中 ${attempt + 1}/${maxRetries}`;
+          await wait(700 * (attempt + 1));
+        }
+      }
+
+      throw lastError;
     }
 
     async function loadSchools() {
@@ -1516,19 +1541,32 @@
       setLoading(true);
       try {
         let done = 0;
-        for (const school of list) {
-          const data = await callBackend("adminUpsertSchool", {
-            school: {
-              ...school,
-              historical_scores: []
-            }
-          });
-          const index = schools.findIndex(item => item.id === data.school.id);
-          if (index >= 0) schools[index] = data.school;
-          done += 1;
-          document.getElementById("loadedState").textContent = `清空中 ${done}/${list.length}`;
+        let updatedSchools = [];
+
+        try {
+          const data = await callBackend("adminClearHistoricalScores", { ids: list.map(school => school.id) });
+          updatedSchools = data.schools || [];
+          done = data.count || updatedSchools.length;
+        } catch (error) {
+          if (!/不支援的後端操作/.test(error.message || "")) throw error;
+          for (const school of list) {
+            const data = await callBackend("adminUpsertSchool", {
+              school: {
+                ...school,
+                historical_scores: []
+              }
+            });
+            updatedSchools.push(data.school);
+            done += 1;
+            document.getElementById("loadedState").textContent = `清空中 ${done}/${list.length}`;
+            await wait(120);
+          }
         }
-        historicalScoresDraft = normalizeHistoricalScores(historicalScoresDraft);
+
+        for (const school of updatedSchools) {
+          const index = schools.findIndex(item => item.id === school.id);
+          if (index >= 0) schools[index] = school;
+        }
         if (fields.id.value && list.some(school => school.id === fields.id.value)) {
           historicalScoresDraft = [];
           renderHistoricalEditor();
