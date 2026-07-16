@@ -291,6 +291,8 @@
     .directory-result small { display: block; margin-top: 3px; color: var(--muted); }
     .directory-departments { display: flex; flex-wrap: wrap; gap: 7px; }
     .directory-departments .badge { background: white; border: 1px solid #bae6fd; color: #0369a1; }
+    .directory-departments button.badge { cursor: pointer; }
+    .directory-departments button.badge:hover { background: #dbeafe; border-color: var(--blue); }
 
     .history-editor {
       display: grid;
@@ -773,9 +775,14 @@
                   </select>
                 </label>
               </div>
-              <label>職群
-                <input id="vocational_group" placeholder="可留空" />
-              </label>
+              <div class="two">
+                <label>職群
+                  <input id="vocational_group" placeholder="可留空" />
+                </label>
+                <label>科系 / 類科
+                  <input id="department" placeholder="可留空；可從上方科系標籤帶入" />
+                </label>
+              </div>
               <div class="two">
                 <label>國文最低
                   <input id="min_chinese" type="number" step="1" placeholder="可留空" />
@@ -917,15 +924,16 @@
     };
     const csvHeaders = [
       "id", "region", "name", "district", "points", "credits", "type", "ownership",
-      "vocational_group", "historical_scores", "min_chinese", "min_english", "min_math", "min_science", "min_social", "min_composition"
+      "vocational_group", "department", "historical_scores", "min_chinese", "min_english", "min_math", "min_science", "min_social", "min_composition"
     ];
     const fields = [
-      "id", "region", "name", "district", "points", "credits", "type", "ownership", "vocational_group",
+      "id", "region", "name", "district", "points", "credits", "type", "ownership", "vocational_group", "department",
       "min_chinese", "min_english", "min_math", "min_science", "min_social", "min_composition"
     ].reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
 
     let schools = [];
     let schoolDirectory = [];
+    let selectedDirectoryDepartments = [];
     let historicalScoresDraft = [];
     let filters = { search: "", region: "all", ownership: "all", sortBy: "updated_at" };
     let loading = false;
@@ -1020,6 +1028,7 @@
         .map((item) => item.deptName)
         .filter(Boolean)
         .filter((value, position, values) => values.indexOf(value) === position);
+      selectedDirectoryDepartments = departments;
       fields.name.value = school.name || "";
       fields.district.value = school.county || "";
       fields.type.value = school.levelInfo || "";
@@ -1029,9 +1038,16 @@
       document.getElementById("directorySearch").value = school.name;
       document.getElementById("directoryResults").innerHTML = "";
       document.getElementById("directoryDepartments").innerHTML = departments.length
-        ? departments.map((department) => `<span class="badge">${escapeHtml(department)}</span>`).join("")
+        ? departments.map((department, index) => `<button type="button" class="badge" onclick="selectDirectoryDepartment(${index})">${escapeHtml(department)}</button>`).join("")
         : "<span class=\"badge gray\">此校未提供科系</span>";
       showToast(`已帶入 ${school.name} 的基本資料`);
+    }
+
+    function selectDirectoryDepartment(index) {
+      const department = selectedDirectoryDepartments[index];
+      if (!department) return;
+      fields.department.value = department || "";
+      showToast(`已帶入科系：${department}`);
     }
 
     function wait(ms) {
@@ -1206,6 +1222,7 @@
         type: fields.type.value.trim() || null,
         ownership: fields.ownership.value || null,
         vocational_group: fields.vocational_group.value.trim() || null,
+        department: fields.department.value.trim() || null,
         min_chinese: nullableNumber("min_chinese"),
         min_english: nullableNumber("min_english"),
         min_math: nullableNumber("min_math"),
@@ -1226,7 +1243,8 @@
         school.district,
         school.type,
         school.ownership,
-        school.vocational_group
+        school.vocational_group,
+        school.department
       ].map(normalizeText).join("|");
     }
 
@@ -1358,7 +1376,7 @@
           <td data-label="地區">${escapeHtml(school.district || "-")}</td>
           <td data-label="類型">${school.type ? `<span class="badge">${escapeHtml(school.type)}</span>` : "-"}</td>
           <td data-label="屬性"><span class="badge ${school.ownership === "public" ? "green" : school.ownership === "private" ? "amber" : "gray"}">${escapeHtml(school.ownership || "未設定")}</span></td>
-          <td data-label="職群">${escapeHtml(school.vocational_group || "-")}</td>
+          <td data-label="職群 / 科系">${escapeHtml(school.vocational_group || "-")}${school.department ? `<br><small>${escapeHtml(school.department)}</small>` : ""}</td>
           <td data-label="分數"><strong>${num(school.points)}</strong></td>
           <td data-label="積分">${school.credits == null ? "-" : num(school.credits)}</td>
           <td data-label="歷年">${historicalSummary(school)}</td>
@@ -1537,6 +1555,7 @@
         type: String(row.type || "").trim() || null,
         ownership: String(row.ownership || "").trim() || null,
         vocational_group: String(row.vocational_group || "").trim() || null,
+        department: String(row.department || "").trim() || null,
         historical_scores: safeNormalizeHistoricalScores(row.historical_scores),
         min_chinese: optionalNumber(row.min_chinese),
         min_english: optionalNumber(row.min_english),
@@ -1803,6 +1822,7 @@
     window.editSchool = editSchool;
     window.deleteSchool = deleteSchool;
     window.selectDirectorySchool = selectDirectorySchool;
+    window.selectDirectoryDepartment = selectDirectoryDepartment;
     window.updateHistoricalScore = updateHistoricalScore;
     window.removeHistoricalScore = removeHistoricalScore;
   </script>
