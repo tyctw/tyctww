@@ -1023,22 +1023,22 @@
     function selectDirectorySchool(index) {
       const school = schoolDirectory[index];
       if (!school) return;
-      const departments = schoolDirectory
+      const departmentItems = schoolDirectory
         .filter((item) => item.name === school.name && item.county === school.county)
-        .map((item) => item.deptName)
-        .filter(Boolean)
-        .filter((value, position, values) => values.indexOf(value) === position);
-      selectedDirectoryDepartments = departments;
+        .filter((item) => item.deptName)
+        .filter((item, position, items) => items.findIndex((candidate) => candidate.deptName === item.deptName) === position);
+      selectedDirectoryDepartments = departmentItems;
       fields.name.value = school.name || "";
       fields.district.value = school.county || "";
       fields.type.value = school.levelInfo || "";
       fields.vocational_group.value = school.groupName || "";
+      fields.ownership.value = school.ownership || "";
       if (countyToRegion[school.county]) fields.region.value = countyToRegion[school.county];
       refreshDistrictOptions();
       document.getElementById("directorySearch").value = school.name;
       document.getElementById("directoryResults").innerHTML = "";
-      document.getElementById("directoryDepartments").innerHTML = departments.length
-        ? departments.map((department, index) => `<button type="button" class="badge" onclick="selectDirectoryDepartment(${index})">${escapeHtml(department)}</button>`).join("")
+      document.getElementById("directoryDepartments").innerHTML = departmentItems.length
+        ? departmentItems.map((item, index) => `<button type="button" class="badge" onclick="selectDirectoryDepartment(${index})">${escapeHtml(item.deptName)}</button>`).join("")
         : "<span class=\"badge gray\">此校未提供科系</span>";
       showToast(`已帶入 ${school.name} 的基本資料`);
     }
@@ -1046,8 +1046,10 @@
     function selectDirectoryDepartment(index) {
       const department = selectedDirectoryDepartments[index];
       if (!department) return;
-      fields.department.value = department || "";
-      showToast(`已帶入科系：${department}`);
+      fields.department.value = department.deptName || "";
+      fields.vocational_group.value = department.groupName || "";
+      fields.type.value = department.levelInfo || "";
+      showToast(`已帶入科系：${department.deptName}`);
     }
 
     function wait(ms) {
