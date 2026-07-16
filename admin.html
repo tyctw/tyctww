@@ -712,7 +712,8 @@
                 <input id="name" required placeholder="請輸入學校或科別名稱" />
               </label>
               <label>行政區 / 地區
-                <input id="district" placeholder="可留空" />
+                <input id="district" list="districtOptions" placeholder="依區域提供建議，可手動輸入" />
+                <datalist id="districtOptions"></datalist>
               </label>
               <div class="two">
                 <label>分數門檻
@@ -763,9 +764,14 @@
                   <input id="min_science" type="number" step="1" placeholder="可留空" />
                 </label>
               </div>
-              <label>社會最低
-                <input id="min_social" type="number" step="1" placeholder="可留空" />
-              </label>
+              <div class="two">
+                <label>社會最低
+                  <input id="min_social" type="number" step="1" placeholder="可留空" />
+                </label>
+                <label>作文最低
+                  <input id="min_composition" type="number" min="0" max="6" step="1" placeholder="0～6，可留空" />
+                </label>
+              </div>
               <div class="form-actions">
                 <button class="btn success" id="saveBtn" type="submit">儲存到 Supabase</button>
                 <button class="btn" id="resetBtn" type="button">清除表單</button>
@@ -863,13 +869,22 @@
       tainan: "臺南",
       hsinchu: "竹苗"
     };
+    const districtsByRegion = {
+      taoyuan: "中壢區 平鎮區 龍潭區 楊梅區 新屋區 觀音區 桃園區 龜山區 八德區 大溪區 復興區 大園區 蘆竹區".split(" "),
+      kaohsiung: "新興區 前金區 苓雅區 鹽埕區 鼓山區 旗津區 前鎮區 三民區 楠梓區 小港區 左營區 仁武區 大社區 岡山區 路竹區 阿蓮區 田寮區 燕巢區 橋頭區 梓官區 彌陀區 永安區 湖內區 鳳山區 大寮區 林園區 鳥松區 大樹區 旗山區 美濃區 六龜區 內門區 杉林區 甲仙區 桃源區 那瑪夏區 茂林區 茄萣區".split(" "),
+      central: "中區 東區 南區 西區 北區 北屯區 西屯區 南屯區 太平區 大里區 霧峰區 烏日區 豐原區 后里區 石岡區 東勢區 和平區 新社區 潭子區 大雅區 神岡區 大肚區 沙鹿區 龍井區 梧棲區 清水區 大甲區 外埔區 大安區 南投市 中寮鄉 草屯鎮 國姓鄉 埔里鎮 仁愛鄉 名間鄉 集集鎮 水里鄉 魚池鄉 信義鄉 竹山鎮 鹿谷鄉".split(" "),
+      changhua: "彰化市 芬園鄉 花壇鄉 秀水鄉 鹿港鎮 福興鄉 線西鄉 和美鎮 伸港鄉 員林鎮 社頭鄉 永靖鄉 埔心鄉 溪湖鎮 大村鄉 埔鹽鄉 田中鎮 北斗鎮 田尾鄉 埤頭鄉 溪州鄉 竹塘鄉 二林鎮 大城鄉 芳苑鄉 二水鄉".split(" "),
+      taipei: "中正區 大同區 中山區 松山區 大安區 萬華區 信義區 士林區 北投區 內湖區 南港區 文山區 萬里區 金山區 板橋區 汐止區 深坑區 石碇區 瑞芳區 平溪區 雙溪區 貢寮區 新店區 坪林區 烏來區 永和區 中和區 土城區 三峽區 樹林區 鶯歌區 三重區 新莊區 泰山區 林口區 蘆洲區 五股區 八里區 淡水區 三芝區 石門區 仁愛區 安樂區 暖暖區 七堵區".split(" "),
+      tainan: "中西區 東區 南區 北區 安平區 安南區 永康區 歸仁區 新化區 左鎮區 玉井區 楠西區 南化區 仁德區 關廟區 龍崎區 官田區 麻豆區 佳里區 西港區 七股區 將軍區 學甲區 北門區 新營區 後壁區 白河區 東山區 六甲區 下營區 柳營區 鹽水區 善化區 大內區 山上區 新市區 安定區".split(" "),
+      hsinchu: "竹北市 湖口鄉 新豐鄉 新埔鎮 關西鎮 芎林鄉 寶山鄉 竹東鎮 五峰鄉 橫山鄉 尖石鄉 北埔鄉 峨眉鄉 東區 北區 香山區 竹南鎮 頭份市 三灣鄉 南庄鄉 獅潭鄉 後龍鎮 通霄鎮 苑裡鎮 苗栗市 造橋鄉 頭屋鄉 公館鄉 大湖鄉 泰安鄉 銅鑼鄉 三義鄉 西湖鄉 卓蘭鎮".split(" ")
+    };
     const csvHeaders = [
       "id", "region", "name", "district", "points", "credits", "type", "ownership",
-      "vocational_group", "historical_scores", "min_chinese", "min_english", "min_math", "min_science", "min_social"
+      "vocational_group", "historical_scores", "min_chinese", "min_english", "min_math", "min_science", "min_social", "min_composition"
     ];
     const fields = [
       "id", "region", "name", "district", "points", "credits", "type", "ownership", "vocational_group",
-      "min_chinese", "min_english", "min_math", "min_science", "min_social"
+      "min_chinese", "min_english", "min_math", "min_science", "min_social", "min_composition"
     ].reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
 
     let schools = [];
@@ -878,6 +893,7 @@
     let loading = false;
 
     loadConfig();
+    refreshDistrictOptions();
     renderHistoricalEditor();
     render();
 
@@ -902,6 +918,13 @@
         document.getElementById("anonKey").value = saved.anonKey || "";
         document.getElementById("invitationCode").value = saved.invitationCode || "";
       } catch {}
+    }
+
+    function refreshDistrictOptions() {
+      const options = districtsByRegion[fields.region.value] || [];
+      document.getElementById("districtOptions").innerHTML = options
+        .map(district => `<option value="${district}"></option>`)
+        .join("");
     }
 
     function wait(ms) {
@@ -1080,7 +1103,8 @@
         min_english: nullableNumber("min_english"),
         min_math: nullableNumber("min_math"),
         min_science: nullableNumber("min_science"),
-        min_social: nullableNumber("min_social")
+        min_social: nullableNumber("min_social"),
+        min_composition: nullableNumber("min_composition")
       };
     }
 
@@ -1145,6 +1169,7 @@
 
     function resetForm() {
       document.getElementById("schoolForm").reset();
+      refreshDistrictOptions();
       fields.id.value = "";
       historicalScoresDraft = [];
       renderHistoricalEditor();
@@ -1157,6 +1182,7 @@
       const school = schools.find(item => item.id === id);
       if (!school) return;
       for (const key of Object.keys(fields)) fields[key].value = school[key] ?? "";
+      refreshDistrictOptions();
       historicalScoresDraft = historicalScoresFromSchool(school);
       renderHistoricalEditor();
       document.getElementById("formTitle").textContent = "修改學校";
@@ -1280,7 +1306,7 @@
     function minimumText(school) {
       const items = [
         ["國", school.min_chinese], ["英", school.min_english], ["數", school.min_math],
-        ["自", school.min_science], ["社", school.min_social]
+        ["自", school.min_science], ["社", school.min_social], ["作", school.min_composition]
       ].filter(([, value]) => value != null && value !== "");
       return items.length ? items.map(([label, value]) => `${label}${value}`).join(" / ") : "-";
     }
@@ -1343,7 +1369,8 @@
           min_english: 6,
           min_math: 6,
           min_science: "",
-          min_social: ""
+          min_social: "",
+          min_composition: ""
         }
       ]);
     }
@@ -1408,7 +1435,8 @@
         min_english: optionalNumber(row.min_english),
         min_math: optionalNumber(row.min_math),
         min_science: optionalNumber(row.min_science),
-        min_social: optionalNumber(row.min_social)
+        min_social: optionalNumber(row.min_social),
+        min_composition: optionalNumber(row.min_composition)
       };
     }
 
@@ -1617,6 +1645,7 @@
       document.getElementById("editor").scrollIntoView({ behavior: "smooth", block: "start" });
     });
     document.getElementById("resetBtn").addEventListener("click", resetForm);
+    fields.region.addEventListener("change", refreshDistrictOptions);
     document.getElementById("addHistoryBtn").addEventListener("click", () => addHistoricalScore());
     document.getElementById("copyCurrentHistoryBtn").addEventListener("click", () => {
       if (optionalNumber(fields.points.value) === null) {
