@@ -271,6 +271,27 @@
     .form-grid { display: grid; gap: 13px; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+    .directory-picker {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid #bae6fd;
+      border-radius: var(--radius);
+      background: #f0f9ff;
+    }
+
+    .directory-picker strong { color: var(--ink); }
+    .directory-picker p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 800; }
+    .directory-results { display: grid; gap: 8px; }
+    .directory-result {
+      width: 100%; padding: 10px; text-align: left; border: 1px solid var(--line);
+      border-radius: var(--radius); background: white; color: var(--ink); font-weight: 800;
+    }
+    .directory-result:hover { border-color: var(--blue); background: #eff6ff; }
+    .directory-result small { display: block; margin-top: 3px; color: var(--muted); }
+    .directory-departments { display: flex; flex-wrap: wrap; gap: 7px; }
+    .directory-departments .badge { background: white; border: 1px solid #bae6fd; color: #0369a1; }
+
     .history-editor {
       display: grid;
       gap: 10px;
@@ -697,6 +718,13 @@
           <div class="card-body">
             <form class="form-grid" id="schoolForm">
               <input type="hidden" id="id" />
+              <section class="directory-picker" aria-label="全國校科快速帶入">
+                <strong>全國校科快速帶入</strong>
+                <p>輸入至少兩個字，選擇學校後會自動帶入就學區、縣市、類型與群別，並列出該校所有科系。</p>
+                <input id="directorySearch" autocomplete="off" placeholder="例如：三民、商工、餐飲" />
+                <div id="directoryResults" class="directory-results" aria-live="polite"></div>
+                <div id="directoryDepartments" class="directory-departments"></div>
+              </section>
               <label>區域
                 <select id="region" required>
                   <option value="taoyuan">桃園</option>
@@ -878,6 +906,15 @@
       tainan: "中西區 東區 南區 北區 安平區 安南區 永康區 歸仁區 新化區 左鎮區 玉井區 楠西區 南化區 仁德區 關廟區 龍崎區 官田區 麻豆區 佳里區 西港區 七股區 將軍區 學甲區 北門區 新營區 後壁區 白河區 東山區 六甲區 下營區 柳營區 鹽水區 善化區 大內區 山上區 新市區 安定區".split(" "),
       hsinchu: "竹北市 湖口鄉 新豐鄉 新埔鎮 關西鎮 芎林鄉 寶山鄉 竹東鎮 五峰鄉 橫山鄉 尖石鄉 北埔鄉 峨眉鄉 東區 北區 香山區 竹南鎮 頭份市 三灣鄉 南庄鄉 獅潭鄉 後龍鎮 通霄鎮 苑裡鎮 苗栗市 造橋鄉 頭屋鄉 公館鄉 大湖鄉 泰安鄉 銅鑼鄉 三義鄉 西湖鄉 卓蘭鎮".split(" ")
     };
+    const countyToRegion = {
+      "桃園市": "taoyuan",
+      "高雄市": "kaohsiung",
+      "臺中市": "central", "南投縣": "central",
+      "彰化縣": "changhua",
+      "臺北市": "taipei", "新北市": "taipei", "基隆市": "taipei",
+      "臺南市": "tainan",
+      "新竹縣": "hsinchu", "新竹市": "hsinchu", "苗栗縣": "hsinchu"
+    };
     const csvHeaders = [
       "id", "region", "name", "district", "points", "credits", "type", "ownership",
       "vocational_group", "historical_scores", "min_chinese", "min_english", "min_math", "min_science", "min_social", "min_composition"
@@ -888,12 +925,14 @@
     ].reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
 
     let schools = [];
+    let schoolDirectory = [];
     let historicalScoresDraft = [];
     let filters = { search: "", region: "all", ownership: "all", sortBy: "updated_at" };
     let loading = false;
 
     loadConfig();
     refreshDistrictOptions();
+    loadSchoolDirectory();
     renderHistoricalEditor();
     render();
 
@@ -925,6 +964,74 @@
       document.getElementById("districtOptions").innerHTML = options
         .map(district => `<option value="${district}"></option>`)
         .join("");
+    }
+
+    async function loadSchoolDirectory() {
+      const results = document.getElementById("directoryResults");
+      results.innerHTML = "<p>正在載入全國校科名錄…</p>";
+      try {
+        const response = await fetch(new URL("school-directory.json", window.location.href), { cache: "no-store" });
+        if (!response.ok) throw new Error("directory unavailable");
+        const data = await response.json();
+        schoolDirectory = Array.isArray(data) ? data : [];
+        renderDirectoryResults();
+      } catch (error) {
+        console.warn("無法載入全國校科名錄", error);
+        results.innerHTML = window.location.protocol === "file:"
+          ? "<p>請用網站網址或本機開發伺服器開啟管理頁；直接雙擊 HTML 檔會被瀏覽器封鎖讀取校科名錄。</p>"
+          : "<p>全國校科名錄載入失敗，請確認 school-directory.json 已與 admin.html 一起部署。</p>";
+      }
+    }
+
+    function matchingDirectorySchools(keyword) {
+      const search = keyword.trim().toLowerCase();
+      if (search.length < 2) return [];
+      const unique = new Map();
+      schoolDirectory.forEach((school) => {
+        const values = [school.name, school.county, school.deptName, school.groupName].filter(Boolean).join(" ").toLowerCase();
+        const key = `${school.county}|${school.name}`;
+        if (values.includes(search) && !unique.has(key)) unique.set(key, school);
+      });
+      return Array.from(unique.values())
+        .sort((a, b) => {
+          const score = (school) => school.name.toLowerCase() === search ? 0 : school.name.toLowerCase().startsWith(search) ? 1 : 2;
+          return score(a) - score(b) || a.name.localeCompare(b.name, "zh-Hant");
+        })
+        .slice(0, 6);
+    }
+
+    function renderDirectoryResults() {
+      const keyword = document.getElementById("directorySearch").value;
+      const results = document.getElementById("directoryResults");
+      if (schoolDirectory.length === 0) return;
+      const matches = matchingDirectorySchools(keyword);
+      results.innerHTML = keyword.trim().length < 2
+        ? ""
+        : matches.length
+          ? matches.map((school) => `<button type="button" class="directory-result" onclick="selectDirectorySchool(${schoolDirectory.indexOf(school)})"><strong>${escapeHtml(school.name)}</strong><small>${escapeHtml(school.county)}${school.groupName ? `・${escapeHtml(school.groupName)}` : ""}</small></button>`).join("")
+          : "<p>找不到相關學校，請縮短關鍵字。</p>";
+    }
+
+    function selectDirectorySchool(index) {
+      const school = schoolDirectory[index];
+      if (!school) return;
+      const departments = schoolDirectory
+        .filter((item) => item.name === school.name && item.county === school.county)
+        .map((item) => item.deptName)
+        .filter(Boolean)
+        .filter((value, position, values) => values.indexOf(value) === position);
+      fields.name.value = school.name || "";
+      fields.district.value = school.county || "";
+      fields.type.value = school.levelInfo || "";
+      fields.vocational_group.value = school.groupName || "";
+      if (countyToRegion[school.county]) fields.region.value = countyToRegion[school.county];
+      refreshDistrictOptions();
+      document.getElementById("directorySearch").value = school.name;
+      document.getElementById("directoryResults").innerHTML = "";
+      document.getElementById("directoryDepartments").innerHTML = departments.length
+        ? departments.map((department) => `<span class="badge">${escapeHtml(department)}</span>`).join("")
+        : "<span class=\"badge gray\">此校未提供科系</span>";
+      showToast(`已帶入 ${school.name} 的基本資料`);
     }
 
     function wait(ms) {
@@ -1646,6 +1753,7 @@
     });
     document.getElementById("resetBtn").addEventListener("click", resetForm);
     fields.region.addEventListener("change", refreshDistrictOptions);
+    document.getElementById("directorySearch").addEventListener("input", renderDirectoryResults);
     document.getElementById("addHistoryBtn").addEventListener("click", () => addHistoricalScore());
     document.getElementById("copyCurrentHistoryBtn").addEventListener("click", () => {
       if (optionalNumber(fields.points.value) === null) {
@@ -1694,6 +1802,7 @@
 
     window.editSchool = editSchool;
     window.deleteSchool = deleteSchool;
+    window.selectDirectorySchool = selectDirectorySchool;
     window.updateHistoricalScore = updateHistoricalScore;
     window.removeHistoricalScore = removeHistoricalScore;
   </script>
